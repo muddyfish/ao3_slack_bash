@@ -1,5 +1,6 @@
 import asyncio
 import re
+import subprocess
 
 from aiohttp import ClientSession
 import slack
@@ -41,10 +42,20 @@ class SlackBot:
         await self.send_message(message["channel"], resp)
 
     async def run_cmd(self, command, message: Message):
-        pass
+        output = subprocess.run(command["cmd"], shell=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+        if command["display_output"]:
+            resp = (f"```\n{output.stdout.decode().strip()}\n```" if output.stdout else "") + \
+                   (f"```\n{output.stderr.decode().strip()}\n```" if output.stderr else "")
+            await self.send_message(message["channel"], resp)
 
     async def run_command(self, command, message: Message):
+        if "reply1" in command:
+            await self.send_message(message["channel"], command["reply1"])
+
         await self.command_types[command["type"]](command, message)
+
+        if "complete" in command:
+            await self.send_message(message["channel"], command["complete"])
 
     async def send_message(self, channel: str, response: str):
         await self.slack_client.query(
