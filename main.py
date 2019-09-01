@@ -15,8 +15,8 @@ class SlackBot:
     def __init__(self, config_file: str = "config.yaml"):
         self.config = Config.from_file(config_file)
 
-        session = ClientSession()
-        self.slack_client = SlackAPI(token=self.config.bot_token, session=session)
+        self.session = ClientSession()
+        self.slack_client = SlackAPI(token=self.config.bot_token, session=self.session)
 
         self.commands = self.config.commands
         self.prefix = self.config.prefix
@@ -36,7 +36,9 @@ class SlackBot:
         await self.send_message(message["channel"], " ".join(mentioned_ids))
 
     async def read_web(self, command, message: Message):
-        pass
+        async with self.session.get(command["url"]) as resp:
+            resp = await resp.text()
+        await self.send_message(message["channel"], resp)
 
     async def run_cmd(self, command, message: Message):
         pass
