@@ -51,6 +51,9 @@ class SlackBot:
             await self.send_message(message["channel"], resp)
 
     async def run_command(self, command, message: Message):
+        """
+        Run a command after checking permissions.
+        """
         channel = message["channel"]
         if "acl1" in command:
             if not command["acl1"] or message["user"] not in command["acl1"]:
@@ -74,6 +77,10 @@ class SlackBot:
             await self.send_message(channel, command["complete"])
 
     async def wait_for_message(self, text: str, timeout: int) -> Message:
+        """
+        Wait until receive a message `text` within `timeout`.
+        Returns None if timed out or the message.
+        """
         future = loop.create_future()
         check = lambda event: event.event["text"] == text
         self.waiters.append((future, check))
@@ -83,15 +90,21 @@ class SlackBot:
             return None
         return event
 
-    async def send_message(self, channel: str, response: str):
+    async def send_message(self, channel: str, message: str):
+        """
+        Send `message` to `channel`
+        """
         await self.slack_client.query(
             slack.methods.CHAT_POST_MESSAGE,
             data={
                 "channel": channel,
-                "text": response,
+                "text": message,
             })
 
     async def rtm(self):
+        """
+        Main loop, parses Slack messages and runs them
+        """
         async for event in self.slack_client.rtm():
             if isinstance(event, Message):
                 for future, check in self.waiters:
