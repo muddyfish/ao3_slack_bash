@@ -17,3 +17,11 @@ Config file format:
    - trigger2: The trigger for acl2 to be checked
    - reply2: The message to show when acl2 has been verified
    - timeout: How long to wait before cancelling the command waiting for a second person
+
+
+Installing:
+
+This bot uses Python 3.6.
+Create a virtualenv and install with `pip install -r requirements.txt`.
+
+Run with `python main.py` in the installation directory.
