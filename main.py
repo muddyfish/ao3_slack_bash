@@ -94,7 +94,6 @@ class SlackBot:
     async def rtm(self):
         async for event in self.slack_client.rtm():
             if isinstance(event, Message):
-                print(event)
                 for future, check in self.waiters:
                     if check(event):
                         future.set_result(event)
