@@ -1,0 +1,20 @@
+bot: "your-token-here"
+prefix: "!"
+commands:
+  id:
+    type: get_id
+  queues:
+    type: read_web
+    url: "http://catbus.co.uk"
+  deploy:
+    type: run_cmd
+    acl1: ["UKY6W4N14"]
+    acl2: ["UKY6W4N14"]
+    trigger2: "confirm"
+    reply1: "I am primed to deploy. Confirm with `!confirm`"
+    reply2: "Deploying"
+    timeout: 300
+    complete: "Done"
+
+    cmd: "echo test"
+    display_output: true
