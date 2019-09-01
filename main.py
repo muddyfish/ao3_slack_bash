@@ -13,11 +13,13 @@ mention = re.compile(r"<@([A-Za-z0-9]+)>")
 
 
 class SlackBot:
-    def __init__(self, config_file: str = "config.yaml"):
+    def __init__(self, loop, config_file: str = "config.yaml"):
+        self.loop = loop
         self.config = Config.from_file(config_file)
 
         self.session = ClientSession()
         self.slack_client = SlackAPI(token=self.config.bot_token, session=self.session)
+        self.waiters = []
 
         self.commands = self.config.commands
         self.prefix = self.config.prefix
@@ -49,13 +51,37 @@ class SlackBot:
             await self.send_message(message["channel"], resp)
 
     async def run_command(self, command, message: Message):
+        channel = message["channel"]
+        if "acl1" in command:
+            if not command["acl1"] or message["user"] not in command["acl1"]:
+                return await self.send_message(channel, "You are not in the acl list for this command.")
         if "reply1" in command:
-            await self.send_message(message["channel"], command["reply1"])
+            await self.send_message(channel, command["reply1"])
+        if "acl2" in command and command["acl2"]:
+            message2 = await self.wait_for_message(f"{self.prefix}{command['trigger2']}", timeout=command["timeout"])
+            if message2 is None:
+                return await self.send_message(channel, "Timed out.")
+            if message2["user"] not in command["acl2"]:
+                return await self.send_message(channel, "You are not in the acl list for this command.")
+            if message2["user"] == message["user"]:
+                return await self.send_message(channel, "The authorising user cannot be the initiating user.")
+            if "reply2" in command:
+                await self.send_message(channel, command["reply2"])
 
         await self.command_types[command["type"]](command, message)
 
         if "complete" in command:
-            await self.send_message(message["channel"], command["complete"])
+            await self.send_message(channel, command["complete"])
+
+    async def wait_for_message(self, text: str, timeout: int) -> Message:
+        future = loop.create_future()
+        check = lambda event: event.event["text"] == text
+        self.waiters.append((future, check))
+        try:
+            event = await asyncio.wait_for(future, timeout=timeout)
+        except asyncio.TimeoutError:
+            return None
+        return event
 
     async def send_message(self, channel: str, response: str):
         await self.slack_client.query(
@@ -68,14 +94,19 @@ class SlackBot:
     async def rtm(self):
         async for event in self.slack_client.rtm():
             if isinstance(event, Message):
+                print(event)
+                for future, check in self.waiters:
+                    if check(event):
+                        future.set_result(event)
+
                 if not event.event["text"].startswith(self.prefix):
                     continue
                 command = event.event["text"].replace(self.prefix, "", 1).split(" ", 1)[0]
                 if command in self.commands:
-                    await self.run_command(self.commands[command], event.event)
+                    asyncio.ensure_future(self.run_command(self.commands[command], event.event))
 
 
 if __name__ == "__main__":
-    bot = SlackBot()
     loop = asyncio.get_event_loop()
+    bot = SlackBot(loop)
     loop.run_until_complete(bot.run())
