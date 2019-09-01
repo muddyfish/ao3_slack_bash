@@ -1,3 +1,5 @@
 slack-sansio[aiohttp]
 PyYAML
 aiohttp
+wheel
+setuptools
